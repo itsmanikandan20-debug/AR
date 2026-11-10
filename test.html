@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AR Phone Test</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0f1115; color: #f2f1ee; font: 16px/1.5 system-ui, sans-serif; }
+  #ui { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); pointer-events: none; }
+  #ui > * { pointer-events: auto; }
+  h1 { font-size: 22px; margin: 0; }
+  button { font: 600 17px system-ui; padding: 16px; border-radius: 12px; border: 0; background: #ff5a4e; color: #fff; }
+  #log { margin: 0; background: rgba(0,0,0,.7); padding: 10px; border-radius: 10px; font: 13px/1.4 monospace; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>AR phone test</h1>
+  <p id="intro">This checks if your phone can do AR in Chrome. Tap Start, then move the phone slowly over the floor. Tap the screen to drop a red cube.</p>
+  <button id="go">Start AR test</button>
+  <p id="log">Checking…</p>
+</div>
+<script type="importmap">{ "imports": { "three": "./lib/three/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+const log = document.getElementById('log');
+const lines = [];
+const say = (t) => { lines.push(t); log.textContent = lines.slice(-8).join('\n'); };
+let stats = '';
+const show = () => { log.textContent = lines.slice(-6).join('\n') + (stats ? '\n' + stats : ''); };
+
+say('Browser: ' + navigator.userAgent.replace(/\(KHTML.*$/, ''));
+say('WebXR: ' + (navigator.xr ? 'yes' : 'NO'));
+let ok = false;
+try { ok = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')); } catch (e) { say('isSessionSupported error: ' + e.message); }
+say('AR supported: ' + (ok ? 'YES' : 'NO'));
+show();
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.01, 20);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2));
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.14, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+ring.matrixAutoUpdate = false; ring.visible = false; scene.add(ring);
+// Always-visible cube 1 m in front at start, to prove 3D drawing works
+const probe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0x4fd18b }));
+probe.position.set(0, 0, -1); scene.add(probe);
+
+let hitSource = null, frames = 0, hits = 0, cubes = 0;
+document.getElementById('go').onclick = async () => {
+  try {
+    const session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('ui') }
+    });
+    say('Session: started');
+    say('dom-overlay: ' + (session.domOverlayState ? session.domOverlayState.type : 'not available'));
+    renderer.xr.setReferenceSpaceType('local');
+    await renderer.xr.setSession(session);
+    hitSource = await session.requestHitTestSource({ space: await session.requestReferenceSpace('viewer') });
+    say('Hit test: ready. You should see a GREEN cube in front of you.');
+    document.getElementById('go').hidden = true;
+    document.getElementById('intro').hidden = true;
+    session.addEventListener('select', () => {
+      if (!ring.visible) return;
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0xff5a4e }));
+      c.position.setFromMatrixPosition(ring.matrix); c.position.y += 0.05; scene.add(c); cubes++;
+    });
+    session.addEventListener('end', () => { say('Session ended'); document.getElementById('go').hidden = false; });
+  } catch (e) { say('START ERROR: ' + e.name + ': ' + e.message); }
+};
+
+renderer.setAnimationLoop((t, frame) => {
+  if (frame) {
+    frames++;
+    if (hitSource) {
+      const r = frame.getHitTestResults(hitSource);
+      if (r.length) { hits++; ring.visible = true; ring.matrix.fromArray(r[0].getPose(renderer.xr.getReferenceSpace()).transform.matrix); }
+      else ring.visible = false;
+    }
+    if (frames % 15 === 0) { stats = `frames ${frames} · surface hits ${hits} · cubes ${cubes}`; show(); }
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
