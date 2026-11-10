@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { XREstimatedLight } from 'three/addons/webxr/XREstimatedLight.js';
 import { TalkingHead } from './lib/talkinghead.mjs';
 
 // ---------------------------------------------------------------------------
@@ -97,9 +98,11 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 50);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const defaultEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = defaultEnv;
 scene.environmentIntensity = 0.9;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.4);
 sun.position.set(1.5, 3, 2);
 scene.add(sun);
@@ -639,6 +642,29 @@ async function startScreen() {
 // AR mode (WebXR, Android Chrome)
 // ---------------------------------------------------------------------------
 let xrSession = null;
+let floorY = null;
+let lastHitResult = null, lastHitPos = null;
+let anchor = null;
+const anchorOffset = new THREE.Vector3();
+let poseChoice = 'auto';
+
+// Lock him to a real-world spot so he doesn't drift when you move
+async function makeAnchor() {
+  anchor?.delete?.();
+  anchor = null;
+  try { anchor = await lastHitResult?.createAnchor?.(); } catch { anchor = null; }
+}
+
+// Live hint while choosing his spot
+let lastHeightKind = '';
+function updateGuideHeight(y) {
+  if (poseChoice !== 'auto' || floorY === null) return;
+  const h = y - floorY;
+  const kind = h > 0.22 && h < 0.8 ? 'sit' : 'stand';
+  if (kind === lastHeightKind) return;
+  lastHeightKind = kind;
+  ui.btnPlace.textContent = kind === 'sit' ? 'He sits here' : 'He stands here';
+}
 let hitSource = null;
 let placing = null; // 'laptop' | 'reviewer' | null
 let lastHit = null;
@@ -658,7 +684,7 @@ async function startAR() {
   await unlockAudio();
   const session = await navigator.xr.requestSession('immersive-ar', {
     requiredFeatures: ['hit-test'],
-    optionalFeatures: ['dom-overlay', 'local-floor'],
+    optionalFeatures: ['dom-overlay', 'anchors', 'light-estimation'],
     domOverlay: { root: ui.hud }
   });
   xrSession = session;
@@ -667,13 +693,35 @@ async function startAR() {
   chairMesh.visible = false;
   root.visible = false;
   renderer.xr.setReferenceSpaceType('local');
+  setupRoomLight();
   await renderer.xr.setSession(session);
   const viewer = await session.requestReferenceSpace('viewer');
   hitSource = await session.requestHitTestSource({ space: viewer });
   session.addEventListener('select', onSelect);
   session.addEventListener('end', onAREnd);
   ui.start.hidden = true;
+  floorY = null;
+  anchor = null;
   setPlacing('laptop');
+}
+
+// Match the room's real light (Android ARCore light estimation)
+let xrLight = null;
+function setupRoomLight() {
+  if (xrLight) return;
+  xrLight = new XREstimatedLight(renderer);
+  xrLight.addEventListener('estimationstart', () => {
+    scene.add(xrLight);
+    sun.visible = false;
+    hemi.visible = false;
+    if (xrLight.environment) scene.environment = xrLight.environment;
+  });
+  xrLight.addEventListener('estimationend', () => {
+    scene.remove(xrLight);
+    sun.visible = true;
+    hemi.visible = true;
+    scene.environment = defaultEnv;
+  });
 }
 
 function setPlacing(what) {
@@ -696,6 +744,9 @@ function updateGuide(found) {
   if (placing === 'laptop') {
     ui.guideText.textContent = 'Put the ring right next to your laptop.';
     ui.btnPlace.textContent = 'Laptop is here';
+  } else if (poseChoice === 'auto') {
+    ui.guideText.textContent = 'Put the ring where he should be. Floor: he stands. Chair, cot or bed: he sits.';
+    ui.btnPlace.textContent = lastHeightKind === 'sit' ? 'He sits here' : 'He stands here';
   } else if (sitting) {
     ui.guideText.textContent = 'Put the ring on the seat where he should sit.';
     ui.btnPlace.textContent = 'He sits here';
@@ -716,8 +767,18 @@ function onSelect() {
     return;
   }
   if (placing === 'reviewer') {
+    // Fit the place: floor = stand, chair/cot/bed/bench height = sit, table height = stand beside it
+    const floor = floorY ?? p.y;
+    const h = p.y - floor;
+    if (poseChoice === 'auto') {
+      sitting = h > 0.22 && h < 0.8;
+      if (h >= 0.8) p.y = floor;
+    }
+    if (!sitting && poseChoice !== 'auto' && h > 0.22) p.y = floor;
     root.position.set(p.x, p.y + heightOffset, p.z);
     seatAnchor.copy(p);
+    anchorOffset.set(0, p.y - (lastHitPos?.y ?? p.y), 0);
+    makeAnchor();
     root.visible = true;
     applyPosition();
     yawNow = targetYaw();
@@ -790,7 +851,7 @@ let hitFrames = 0, xrFrames = 0;
 function showDiag() {
   if (!renderer.xr.isPresenting && !diagErr) { diag.hidden = true; return; }
   diag.hidden = false;
-  diag.textContent = `v3 · frames ${xrFrames} · surface hits ${hitFrames}` + (diagErr ? `\nError: ${diagErr}` : '');
+  diag.textContent = `v4 · floor ${floorY === null ? '?' : floorY.toFixed(2)} · ${anchor ? 'locked' : 'free'} · frames ${xrFrames} · surface hits ${hitFrames}` + (diagErr ? `\nError: ${diagErr}` : '');
 }
 window.addEventListener('error', (e) => { diagErr = String(e.message || e.error); showDiag(); });
 window.addEventListener('unhandledrejection', (e) => { diagErr = String(e.reason?.message || e.reason); showDiag(); });
@@ -804,6 +865,12 @@ renderer.setAnimationLoop((t, frame) => {
 function loop(t, frame) {
   const dt = Math.min(clock.getDelta(), params.has('debug') ? 1 : 0.1);
   if (frame) xrFrames++;
+  if (frame && anchor && frame.trackedAnchors?.has(anchor)) {
+    const ap = frame.getPose(anchor.anchorSpace, renderer.xr.getReferenceSpace());
+    if (ap) {
+      seatAnchor.set(ap.transform.position.x, ap.transform.position.y, ap.transform.position.z).add(anchorOffset);
+    }
+  }
   if (frame && hitSource && placing) {
     const hits = frame.getHitTestResults(hitSource);
     if (hits.length) hitFrames++;
@@ -812,6 +879,11 @@ function loop(t, frame) {
       reticle.matrix.fromArray(pose.transform.matrix);
       reticle.visible = true;
       lastHit = pose;
+      lastHitResult = hits[0];
+      lastHitPos = new THREE.Vector3(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+      // The lowest surface seen so far is the floor
+      if (floorY === null || lastHitPos.y < floorY - 0.03) floorY = lastHitPos.y;
+      if (placing === 'reviewer') updateGuideHeight(lastHitPos.y);
       updateGuide(true);
     } else {
       reticle.visible = false;
@@ -936,7 +1008,9 @@ for (const r of document.querySelectorAll('input[name="who"]')) {
 }
 for (const r of document.querySelectorAll('input[name="pose"]')) {
   r.addEventListener('change', () => {
-    sitting = r.value === 'sit' && r.checked;
+    if (!r.checked) return;
+    poseChoice = r.value;
+    sitting = r.value === 'sit';
     placeForPreview();
   });
 }
@@ -957,7 +1031,7 @@ for (const r of document.querySelectorAll('input[name="pose"]')) {
   await checkAR();
   // Test hooks: ?sit=1, ?who=meera, ?shot=react|talk to freeze a frame for screenshots
   if (params.get('who') === 'meera') { $('whoMeera').checked = true; await loadReviewer('meera'); }
-  if (params.get('sit') === '1') { $('poseSit').checked = true; sitting = true; placeForPreview(); }
+  if (params.get('sit') === '1') { $('poseSit').checked = true; poseChoice = 'sit'; sitting = true; placeForPreview(); }
   if (params.has('debug')) {
     setTimeout(() => {
       const out = {};
