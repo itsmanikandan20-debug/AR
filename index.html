@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>UX Reviewer AR</title>
+<meta name="description" content="A realistic AI UX designer appears in your room and reviews your website with human reactions and voice.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./lib/three/three.module.js",
+    "three/addons/": "./lib/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- 3D canvas goes here -->
+<div id="stage" aria-hidden="true"></div>
+
+<!-- Everything on top of the camera / 3D view -->
+<div id="hud">
+
+  <!-- START SCREEN -->
+  <section id="start" class="panel start">
+    <p class="eyebrow">Design review · AR trial</p>
+    <h1>Your reviewer is ready</h1>
+    <p class="lede">A senior UX designer joins you in your room, looks at your website, reacts like a real person and tells you what to fix.</p>
+
+    <div class="review-meta" id="reviewMeta">
+      <div><span class="k">Website</span><span class="v" id="metaSite">Loading…</span></div>
+      <div><span class="k">Task</span><span class="v" id="metaTask">–</span></div>
+      <div><span class="k">Findings</span><span class="v mono" id="metaCount">–</span></div>
+    </div>
+    <p class="sample-note" id="sampleNote" hidden>This is a sample review. Send your own website to get a real one.</p>
+
+    <fieldset class="choice">
+      <legend>Reviewer</legend>
+      <label><input type="radio" name="who" id="whoArjun" value="arjun" checked><span>Arjun</span></label>
+      <label><input type="radio" name="who" id="whoMeera" value="meera"><span>Meera</span></label>
+    </fieldset>
+
+    <fieldset class="choice">
+      <legend>Position</legend>
+      <label><input type="radio" name="pose" id="poseStand" value="stand" checked><span>Standing</span></label>
+      <label><input type="radio" name="pose" id="poseSit" value="sit"><span>Sitting on a chair</span></label>
+    </fieldset>
+
+    <div class="actions">
+      <button id="btnAR" class="btn primary" disabled>Checking AR…</button>
+      <button id="btnScreen" class="btn">Watch on this screen</button>
+    </div>
+    <p class="hint" id="arHint">AR works on Android phones with Chrome and Google Play Services for AR.</p>
+    <p class="status" id="loadStatus" role="status"></p>
+  </section>
+
+  <!-- PLACEMENT GUIDE (AR) -->
+  <section id="guide" class="toast" hidden>
+    <p id="guideText">Point your phone at your laptop and tap it.</p>
+  </section>
+
+  <!-- REVIEW CARD -->
+  <section id="card" class="card" hidden>
+    <div class="card-top">
+      <span class="step mono" id="cardStep">1 / 7</span>
+      <span class="chip" id="cardSeverity">Major</span>
+      <span class="area" id="cardArea">Hero</span>
+    </div>
+    <p class="feeling" id="cardFeeling">Squinting at small text</p>
+    <p class="fix"><span class="k">Fix</span><span id="cardFix">…</span></p>
+    <img id="cardShot" alt="" hidden>
+  </section>
+
+  <!-- SUBTITLE -->
+  <p id="subtitle" class="subtitle" hidden></p>
+
+  <!-- CONTROLS -->
+  <nav id="controls" class="controls" hidden>
+    <button class="ctl" id="btnPrev" aria-label="Previous finding">Prev</button>
+    <button class="ctl main" id="btnPlay" aria-label="Pause">Pause</button>
+    <button class="ctl" id="btnNext" aria-label="Next finding">Next</button>
+    <button class="ctl" id="btnAdjust" aria-label="Adjust position">Adjust</button>
+    <button class="ctl" id="btnEnd" aria-label="End review">End</button>
+  </nav>
+
+  <div id="adjust" class="adjust" hidden>
+    <button class="ctl" id="adjUp">Up</button>
+    <button class="ctl" id="adjDown">Down</button>
+    <button class="ctl" id="adjLeft">Turn left</button>
+    <button class="ctl" id="adjRight">Turn right</button>
+    <button class="ctl" id="adjMove">Move him</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <section id="summary" class="panel summary" hidden>
+    <p class="eyebrow">Review finished</p>
+    <h2 id="sumTitle">Score</h2>
+    <div class="score"><span class="mono" id="sumScore">62</span><span class="of">/ 100</span></div>
+    <p class="lede" id="sumText"></p>
+    <ol id="sumList" class="sum-list"></ol>
+    <div class="actions">
+      <button id="btnAgain" class="btn primary">Watch again</button>
+      <button id="btnClose" class="btn">Close</button>
+    </div>
+  </section>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

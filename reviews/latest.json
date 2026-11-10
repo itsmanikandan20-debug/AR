@@ -1,0 +1,82 @@
+{
+  "sample": true,
+  "site": "Sample pizza ordering site",
+  "url": "",
+  "task": "Order one medium pizza",
+  "score": 58,
+  "summary": "The food looks great, but ordering takes too much effort. Fix the hidden Order button, the small menu text and the surprise delivery fee first.",
+  "steps": [
+    {
+      "area": "Start",
+      "severity": "none",
+      "emotion": "neutral",
+      "gesture": "wave",
+      "feeling": "Getting started",
+      "line": "Hi Mani, I'm {me}. I'll try to order one medium pizza on this website, the way a real customer would. Let's see how it goes.",
+      "fix": "Watch his face. Each reaction points to one problem."
+    },
+    {
+      "area": "Hero banner",
+      "severity": "major",
+      "emotion": "bright",
+      "gesture": "shield",
+      "feeling": "Eyes hurt from harsh colours",
+      "line": "Oh, that's very loud. Bright red background with yellow text. My eyes don't know where to look. The headline and the offer are fighting each other.",
+      "fix": "Use one strong colour for the main button only. Put text on a calm background with at least 4.5 to 1 contrast."
+    },
+    {
+      "area": "Menu cards",
+      "severity": "major",
+      "emotion": "squint",
+      "gesture": "lean",
+      "feeling": "Squinting at tiny text",
+      "line": "Hmm, I have to lean in to read this. The pizza descriptions look like twelve pixels, in light grey. On a phone this will be very hard to read.",
+      "fix": "Body text at least 16 px. Use dark grey, not light grey, for descriptions."
+    },
+    {
+      "area": "Order button",
+      "severity": "critical",
+      "emotion": "confused",
+      "gesture": "search",
+      "feeling": "Can't find where to order",
+      "line": "Wait, where do I actually order? I scrolled twice. The Order now button is outlined and the same colour as everything else. I almost missed it.",
+      "fix": "Make Order now a filled button with the brand colour. Keep it visible in the header while scrolling."
+    },
+    {
+      "area": "Pizza options",
+      "severity": "critical",
+      "emotion": "frustrated",
+      "gesture": "thumbdown",
+      "feeling": "Annoyed: choices got reset",
+      "line": "Oh no. I picked my toppings, then changed the size to medium, and all my toppings are gone. That is really frustrating. Real customers will leave here.",
+      "fix": "Keep the selected toppings when the size changes. Show the price update right next to the size."
+    },
+    {
+      "area": "Checkout",
+      "severity": "major",
+      "emotion": "surprised",
+      "gesture": "shrug",
+      "feeling": "Surprised by a hidden fee",
+      "line": "What? A delivery fee of forty nine rupees appears only on the last step. I didn't see this anywhere before. This feels like a trick.",
+      "fix": "Show the delivery fee in the cart, before checkout. No surprises on the last step."
+    },
+    {
+      "area": "Order tracking",
+      "severity": "good",
+      "emotion": "happy",
+      "gesture": "thumbup",
+      "feeling": "Happy with clear tracking",
+      "line": "Now this part is nice. The tracking page is clean, the steps are clear and the time is big and easy to read. Good job here.",
+      "fix": "Keep this. Use the same calm style on the menu pages."
+    },
+    {
+      "area": "Overall",
+      "severity": "none",
+      "emotion": "thinking",
+      "gesture": "index",
+      "feeling": "Final thoughts",
+      "line": "So overall, the food looks tasty, but ordering takes too much effort. Fix the order button, the text size and the hidden fee first. Those three will help the most.",
+      "fix": "Top 3: visible Order button, 16 px text, show fees early."
+    }
+  ]
+}

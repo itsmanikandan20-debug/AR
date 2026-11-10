@@ -1,0 +1,189 @@
+/* Layout: one full-screen 3D stage, a floating HUD on top. In AR the camera feed
+   is the background, so every panel is a dark glass sheet that reads on any room.
+   Accent = the designer's redline pen. */
+:root {
+  --ink: #0f1115;
+  --glass: rgba(18, 20, 26, 0.82);
+  --glass-strong: rgba(14, 16, 20, 0.94);
+  --line: rgba(255, 255, 255, 0.12);
+  --fg: #f2f1ee;
+  --muted: #a8abb3;
+  --redline: #ff5a4e;
+  --redline-soft: rgba(255, 90, 78, 0.16);
+  --ok: #4fd18b;
+  --warn: #f4b740;
+  --bad: #ff5a4e;
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 14px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ink);
+  color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+body.in-ar { background: transparent; }
+body.in-ar #stage { display: none; }
+
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+
+#hud {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; align-items: center;
+  font-family: var(--font-body);
+  color: var(--fg);
+}
+#hud > * { pointer-events: auto; }
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Panels */
+.panel {
+  margin: auto 0;
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.eyebrow {
+  margin: 0; color: var(--redline);
+  font: 600 12px/1 var(--font-body);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+h1, h2 {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: 26px; line-height: 1.15; letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--muted); }
+
+.review-meta {
+  display: grid; gap: 8px;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  padding-block: 12px;
+}
+.review-meta div { display: grid; grid-template-columns: 76px 1fr; gap: 12px; }
+.review-meta .k, .fix .k {
+  color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding-top: 2px;
+}
+.review-meta .v { min-width: 0; overflow-wrap: anywhere; }
+.sample-note {
+  margin: -6px 0 0; font-size: 13px; color: var(--warn);
+}
+
+.choice { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.choice legend { width: 100%; color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+.choice label { position: relative; }
+.choice input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.choice span {
+  display: inline-block; padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--fg); font-size: 14px;
+}
+.choice input:checked + span { border-color: var(--redline); background: var(--redline-soft); }
+.choice input:focus-visible + span { outline: 2px solid var(--redline); outline-offset: 2px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  flex: 1 1 160px;
+  font: 600 15px/1 var(--font-body);
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+  cursor: pointer;
+}
+.btn.primary { background: var(--redline); border-color: var(--redline); color: #fff; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:focus-visible, .ctl:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.status { margin: 0; font-size: 13px; color: var(--muted); min-height: 1.2em; }
+
+/* Guide toast */
+.toast {
+  margin-top: 8px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
+  padding: 10px 18px; font-weight: 500; text-align: center; max-width: 100%;
+}
+.toast p { margin: 0; }
+
+/* Finding card */
+.card {
+  width: min(460px, 100%);
+  background: var(--glass); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.step { color: var(--muted); font-size: 12px; }
+.area { color: var(--muted); font-size: 13px; }
+.chip {
+  font: 600 11px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 8px; border-radius: 6px; border: 1px solid currentColor;
+}
+.chip.critical { color: var(--bad); }
+.chip.major { color: var(--warn); }
+.chip.minor { color: var(--muted); }
+.chip.good { color: var(--ok); }
+.feeling { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 17px; }
+.fix { margin: 0; display: grid; grid-template-columns: 34px 1fr; gap: 8px; font-size: 14px; }
+.fix span:last-child { min-width: 0; }
+#cardShot { width: 100%; max-height: 140px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--line); }
+
+/* Subtitle */
+.subtitle {
+  margin: auto 0 12px;
+  max-width: min(640px, 100%);
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 17px; line-height: 1.4; text-align: center;
+}
+
+/* Controls */
+.controls, .adjust {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  max-width: 100%;
+}
+.adjust { margin-bottom: 8px; order: 0; }
+.controls { margin-top: 0; }
+.ctl {
+  font: 600 14px/1 var(--font-body);
+  padding: 12px 14px; min-width: 64px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--glass); color: var(--fg);
+  cursor: pointer;
+}
+.ctl.main { background: var(--redline); border-color: var(--redline); color: #fff; }
+
+/* Summary */
+.score { display: flex; align-items: baseline; gap: 6px; }
+.score .mono { font-size: 48px; font-weight: 500; line-height: 1; }
+.score .of { color: var(--muted); }
+.sum-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--fg); }
+.sum-list li::marker { color: var(--muted); font-family: var(--font-mono); }
+.sum-list .sev { font-size: 12px; color: var(--muted); }
+
+/* Layout when the review runs: card on top, subtitle + controls at bottom */
+#hud.running { justify-content: flex-start; }
+#hud.running .subtitle { margin-top: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
