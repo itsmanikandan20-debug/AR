@@ -219,7 +219,12 @@ controls.minDistance = 1;
 controls.maxDistance = 5;
 controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
+let camMode = 'wide';
+let autoCam = true;
+controls.addEventListener('start', () => { autoCam = false; });
 function setPreviewCamera() {
+  camMode = 'wide';
+  autoCam = true;
   camera.position.set(1.35, 1.35, 2.75);
   controls.target.set(0.35, 0.95, -0.42);
   controls.update();
@@ -307,7 +312,8 @@ function applyPosition() {
 const FIXED_KEYS = [
   'eyeSquintLeft', 'eyeSquintRight', 'browDownLeft', 'browDownRight', 'browInnerUp',
   'cheekSquintLeft', 'cheekSquintRight', 'eyeBlinkLeft', 'eyeBlinkRight', 'eyeWideLeft', 'eyeWideRight',
-  'jawOpen', 'bodyRotateX', 'headRotateX', 'mouthFrownLeft', 'mouthFrownRight', 'noseSneerLeft', 'noseSneerRight'
+  'jawOpen', 'bodyRotateX', 'headRotateX', 'mouthFrownLeft', 'mouthFrownRight', 'noseSneerLeft', 'noseSneerRight',
+  'browOuterUpLeft', 'browOuterUpRight', 'mouthSmileLeft', 'mouthSmileRight'
 ];
 function clearFace() {
   if (!head) return;
@@ -333,16 +339,17 @@ function lookAtLaptop(ms = 2500) {
 // Phase 1: he looks at the design and reacts (no words yet)
 async function react(step, alive) {
   const e = step.emotion || 'neutral';
+  camMode = 'face';
   faceUser = 0;
   lookAtLaptop(3200);
   switch (e) {
     case 'squint':
       head.setMood('neutral');
-      fix({ bodyRotateX: 0.22, headRotateX: 0.1, eyeSquintLeft: 0.9, eyeSquintRight: 0.9, browDownLeft: 0.7, browDownRight: 0.7, cheekSquintLeft: 0.5, cheekSquintRight: 0.5 });
+      fix({ bodyRotateX: 0.28, headRotateX: 0.12, eyeSquintLeft: 1, eyeSquintRight: 1, eyeBlinkLeft: 0.45, eyeBlinkRight: 0.45, browDownLeft: 1, browDownRight: 1, cheekSquintLeft: 0.8, cheekSquintRight: 0.8, noseSneerLeft: 0.3, noseSneerRight: 0.3 });
       break;
     case 'bright':
       head.setMood('disgust');
-      fix({ eyeBlinkLeft: 0.75, eyeBlinkRight: 0.75, browDownLeft: 0.8, browDownRight: 0.8, noseSneerLeft: 0.5, noseSneerRight: 0.5 });
+      fix({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.9, eyeSquintLeft: 1, eyeSquintRight: 1, browDownLeft: 1, browDownRight: 1, noseSneerLeft: 0.8, noseSneerRight: 0.8, mouthFrownLeft: 0.5, mouthFrownRight: 0.5, bodyRotateX: -0.1 });
       head.playGesture('handup', 2.4, true);
       await wait(700); if (!alive()) return;
       glance(0.9, 0.2, 1400);
@@ -350,7 +357,7 @@ async function react(step, alive) {
     case 'confused':
       head.setMood('neutral');
       head.playGesture('🤔', 3);
-      fix({ browInnerUp: 0.8, headRotateX: 0.05 });
+      fix({ browInnerUp: 1, browDownLeft: 0.4, mouthFrownLeft: 0.3, mouthFrownRight: 0.1, headRotateX: 0.05 });
       await wait(900); if (!alive()) return;
       glance(-0.25, -0.12, 700);
       await wait(800); if (!alive()) return;
@@ -360,17 +367,18 @@ async function react(step, alive) {
       break;
     case 'frustrated':
       head.setMood('angry');
-      head.playGesture('😒', 2.5);
-      fix({ browDownLeft: 0.6, browDownRight: 0.6, mouthFrownLeft: 0.5, mouthFrownRight: 0.5 });
+      head.playGesture('no', 2);
+      fix({ browDownLeft: 1, browDownRight: 1, mouthFrownLeft: 0.9, mouthFrownRight: 0.9, noseSneerLeft: 0.6, noseSneerRight: 0.6, eyeSquintLeft: 0.5, eyeSquintRight: 0.5 });
       break;
     case 'surprised':
       head.setMood('fear');
       head.playGesture('😳', 2.5);
-      fix({ eyeWideLeft: 0.8, eyeWideRight: 0.8, browInnerUp: 0.9, jawOpen: 0.25, bodyRotateX: -0.08 });
+      fix({ eyeWideLeft: 1, eyeWideRight: 1, browInnerUp: 1, browOuterUpLeft: 1, browOuterUpRight: 1, jawOpen: 0.4, bodyRotateX: -0.12 });
       break;
     case 'happy':
       head.setMood('happy');
-      head.playGesture('😊', 2.5);
+      head.playGesture('yes', 2);
+      fix({ mouthSmileLeft: 0.9, mouthSmileRight: 0.9, cheekSquintLeft: 0.5, cheekSquintRight: 0.5 });
       break;
     case 'impressed':
       head.setMood('happy');
@@ -548,6 +556,8 @@ async function runFrom(i) {
     const tg = TALK_GESTURE[s.gesture];
     if (tg) setTimeout(() => alive() && head.playGesture(tg[0], 2.8, tg[1]), 600);
     if (s.emotion !== 'squint') fix({ bodyRotateX: null, headRotateX: null });
+    fix({ jawOpen: null, eyeBlinkLeft: null, eyeBlinkRight: null });
+    camMode = 'mid';
     const line = (s.line || '').replaceAll('{me}', REVIEWERS[reviewerKey].name);
     ui.subtitle.textContent = line;
     ui.subtitle.hidden = false;
@@ -560,6 +570,7 @@ async function runFrom(i) {
 }
 
 function showSummary() {
+  camMode = 'wide';
   faceUser = 0.9;
   head.speakTo = null;
   head.setMood('neutral');
@@ -813,6 +824,12 @@ function loop(t, frame) {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     yawNow += d * Math.min(1, dt * 3);
     root.rotation.y = yawNow;
+    // Push held expressions to full strength quickly (library smoothing is too slow for them)
+    for (const k of FIXED_KEYS) {
+      const o = head.mtAvatar[k];
+      if (!o || o.fixed === null || o.fixed === undefined) continue;
+      if (Math.abs(o.fixed - o.value) > 0.005) { o.v = o.fixed > o.value ? o.maxv : -o.maxv; o.needsUpdate = true; }
+    }
     head.animate(dt * 1000);
     if (hipsBone) {
       // Keep his hips over the spot you chose (chair seat or floor), whatever the pose or turn
@@ -828,7 +845,42 @@ function loop(t, frame) {
       footShadow.position.set(tmpH.x, 0.003, tmpH.z);
     }
   }
-  if (!renderer.xr.isPresenting) controls.update();
+  if (!renderer.xr.isPresenting) {
+    if (autoCam && head && camMode !== 'wide') moveCamera(dt);
+    controls.update();
+  }
+}
+
+// Screen mode: the camera moves in to see his face while he reacts, then pulls back a little
+const camGoal = new THREE.Vector3(), tgtGoal = new THREE.Vector3(), hp = new THREE.Vector3();
+function moveCamera(dt) {
+  const hb = head.armature.getObjectByName('Head');
+  if (!hb) return;
+  hb.getWorldPosition(hp);
+  const yaw = root.rotation.y;
+  const fwd = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  const side = new THREE.Vector3(fwd.z, 0, -fwd.x);
+  if (camMode === 'face') {
+    // Like the laptop's webcam: between his face and the screen, looking back at him
+    const look = laptopTarget.position.clone().sub(hp); look.y = 0; look.normalize();
+    const lside = new THREE.Vector3(look.z, 0, -look.x);
+    tgtGoal.copy(hp).add(new THREE.Vector3(0, 0.06, 0));
+    camGoal.copy(hp).addScaledVector(look, 0.95).addScaledVector(lside, 0.2).add(new THREE.Vector3(0, 0.03, 0));
+  } else {
+    tgtGoal.copy(hp).add(new THREE.Vector3(0, -0.3, 0));
+    camGoal.copy(hp).addScaledVector(fwd, 1.9).addScaledVector(side, -0.5).add(new THREE.Vector3(0, -0.1, 0));
+  }
+  // Swing around him on an arc (never through his body)
+  const k = Math.min(1, dt * 1.8);
+  controls.target.lerp(tgtGoal, k);
+  const cur = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  const goal = new THREE.Spherical().setFromVector3(camGoal.clone().sub(tgtGoal));
+  let dTheta = goal.theta - cur.theta;
+  dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
+  cur.theta += dTheta * k;
+  cur.phi += (goal.phi - cur.phi) * k;
+  cur.radius += (goal.radius - cur.radius) * k;
+  camera.position.setFromSpherical(cur).add(controls.target);
 }
 
 // ---------------------------------------------------------------------------
@@ -917,12 +969,26 @@ for (const r of document.querySelectorAll('input[name="pose"]')) {
         root.worldToLocal(v);
         out[b] = [v.x, v.y, v.z].map((n) => +n.toFixed(2));
       }
+      out.mt = Object.keys(head.mtAvatar).length;
+      out.missing = FIXED_KEYS.filter((k) => !head.mtAvatar[k]);
+      out.vals = Object.fromEntries(['eyeSquintLeft','browDownLeft','mouthSmileLeft','eyeBlinkLeft','browInnerUp'].map((k) => [k, head.mtAvatar[k] ? [head.mtAvatar[k].fixed, +(+head.mtAvatar[k].applied).toFixed(2)] : 'none']));
       out.tpl = head.poseCurrentTemplate === CHAIR_POSE ? 'chair' : Object.keys(head.poseTemplates).find((k) => head.poseTemplates[k] === head.poseCurrentTemplate);
       const pre = document.createElement('pre');
       pre.id = 'dbg';
       pre.textContent = JSON.stringify(out);
       document.body.append(pre);
     }, 12000);
+  }
+  if (params.get('cam') === 'face') {
+    const hp = new THREE.Vector3();
+    setTimeout(() => {}, 0);
+    const iv = setInterval(() => {
+      const hb = head.armature.getObjectByName('Head');
+      if (!hb) return;
+      hb.getWorldPosition(hp);
+      controls.target.copy(hp);
+      camera.position.set(hp.x + Math.sin(root.rotation.y) * 0.7, hp.y + 0.03, hp.z + Math.cos(root.rotation.y) * 0.7);
+    }, 100);
   }
   if (params.has('shot')) {
     ui.start.hidden = true;
