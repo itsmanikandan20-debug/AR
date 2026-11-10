@@ -65,7 +65,7 @@ const CHAIR_POSE = {
 // ---------------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const ui = {
-  hud: $('hud'), start: $('start'), guide: $('guide'), guideText: $('guideText'),
+  hud: $('hud'), start: $('start'), guide: $('guide'), guideText: $('guideText'), btnPlace: $('btnPlace'),
   card: $('card'), cardStep: $('cardStep'), cardSeverity: $('cardSeverity'), cardArea: $('cardArea'),
   cardFeeling: $('cardFeeling'), cardFix: $('cardFix'), cardShot: $('cardShot'),
   subtitle: $('subtitle'), controls: $('controls'), adjust: $('adjust'), summary: $('summary'),
@@ -192,10 +192,16 @@ let chairMesh = null;
 })();
 
 // AR reticle and laptop marker
-const reticle = new THREE.Mesh(
-  new THREE.RingGeometry(0.07, 0.09, 40).rotateX(-Math.PI / 2),
-  new THREE.MeshBasicMaterial({ color: 0xff5a4e })
-);
+const reticle = new THREE.Group();
+reticle.add(new THREE.Mesh(
+  new THREE.RingGeometry(0.11, 0.14, 48).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false })
+));
+reticle.add(new THREE.Mesh(
+  new THREE.CircleGeometry(0.035, 32).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0xff5a4e, depthTest: false })
+));
+reticle.renderOrder = 10;
 reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
@@ -662,10 +668,30 @@ async function startAR() {
 function setPlacing(what) {
   placing = what;
   ui.guide.hidden = !what;
-  if (what === 'laptop') ui.guideText.textContent = 'Point at your laptop and tap on it.';
-  if (what === 'reviewer') ui.guideText.textContent = sitting
-    ? 'Now tap the seat of a chair next to the laptop.'
-    : 'Now tap the floor where he should stand.';
+  updateGuide(false);
+}
+
+let guideFound = null;
+function updateGuide(found) {
+  if (!placing || guideFound === found + placing + sitting) return;
+  guideFound = found + placing + sitting;
+  if (!found) {
+    ui.guideText.textContent = 'Move your phone slowly over the table and floor until you see a white ring.';
+    ui.btnPlace.disabled = true;
+    ui.btnPlace.textContent = 'Scanning…';
+    return;
+  }
+  ui.btnPlace.disabled = false;
+  if (placing === 'laptop') {
+    ui.guideText.textContent = 'Put the ring right next to your laptop.';
+    ui.btnPlace.textContent = 'Laptop is here';
+  } else if (sitting) {
+    ui.guideText.textContent = 'Put the ring on the seat where he should sit.';
+    ui.btnPlace.textContent = 'He sits here';
+  } else {
+    ui.guideText.textContent = 'Put the ring on the floor where he should stand.';
+    ui.btnPlace.textContent = 'He stands here';
+  }
 }
 
 function onSelect() {
@@ -751,9 +777,11 @@ renderer.setAnimationLoop((t, frame) => {
       reticle.matrix.fromArray(pose.transform.matrix);
       reticle.visible = true;
       lastHit = pose;
+      updateGuide(true);
     } else {
       reticle.visible = false;
       lastHit = null;
+      updateGuide(false);
     }
   }
   if (head) {
@@ -799,6 +827,7 @@ ui.btnScreen.addEventListener('click', startScreen);
 ui.btnAR.addEventListener('click', () => startAR().catch((e) => {
   ui.loadStatus.textContent = `Could not start AR: ${e.message}. Try "Watch on this screen".`;
 }));
+ui.btnPlace.addEventListener('click', () => onSelect());
 ui.btnPlay.addEventListener('click', () => setPlaying(!playing));
 ui.btnNext.addEventListener('click', () => {
   if (!review) return;
