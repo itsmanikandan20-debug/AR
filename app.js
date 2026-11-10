@@ -768,10 +768,34 @@ function targetYaw() {
   return toLaptop + d * faceUser * (sitting ? 0.6 : 1) + yawOffset;
 }
 
+// On-screen diagnostics for phone testing
+const diag = document.createElement('p');
+diag.id = 'diag';
+diag.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;margin:0;font:12px/1.3 monospace;color:#fff;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:6px;pointer-events:none;z-index:99;white-space:pre-wrap';
+diag.hidden = true;
+ui.hud.append(diag);
+let diagErr = '';
+let hitFrames = 0, xrFrames = 0;
+function showDiag() {
+  if (!renderer.xr.isPresenting && !diagErr) { diag.hidden = true; return; }
+  diag.hidden = false;
+  diag.textContent = `v3 · frames ${xrFrames} · surface hits ${hitFrames}` + (diagErr ? `\nError: ${diagErr}` : '');
+}
+window.addEventListener('error', (e) => { diagErr = String(e.message || e.error); showDiag(); });
+window.addEventListener('unhandledrejection', (e) => { diagErr = String(e.reason?.message || e.reason); showDiag(); });
+setInterval(showDiag, 500);
+
 renderer.setAnimationLoop((t, frame) => {
+  try { loop(t, frame); } catch (err) { if (!diagErr) diagErr = String(err?.message || err); }
+  try { renderer.render(scene, camera); } catch (err) { if (!diagErr) diagErr = 'render: ' + String(err?.message || err); }
+});
+
+function loop(t, frame) {
   const dt = Math.min(clock.getDelta(), params.has('debug') ? 1 : 0.1);
+  if (frame) xrFrames++;
   if (frame && hitSource && placing) {
     const hits = frame.getHitTestResults(hitSource);
+    if (hits.length) hitFrames++;
     if (hits.length) {
       const pose = hits[0].getPose(renderer.xr.getReferenceSpace());
       reticle.matrix.fromArray(pose.transform.matrix);
@@ -805,8 +829,7 @@ renderer.setAnimationLoop((t, frame) => {
     }
   }
   if (!renderer.xr.isPresenting) controls.update();
-  renderer.render(scene, camera);
-});
+}
 
 // ---------------------------------------------------------------------------
 // Audio unlock (needs a tap)

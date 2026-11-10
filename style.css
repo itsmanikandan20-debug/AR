@@ -31,7 +31,6 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 body.in-ar { background: transparent; }
-body.in-ar #stage { display: none; }
 
 #stage { position: fixed; inset: 0; }
 #stage canvas { display: block; width: 100%; height: 100%; }
